@@ -8,18 +8,19 @@ const generateRefreshToken = (id) => {
 };
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
     const emailExists = await User.findOne({ email });
     if (emailExists) {
       return res.status(400).json({ message: "Email already exists" });
     }
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password, role });
     res.status(201).json({
       message: "User registered successfully",
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (e) {
@@ -48,6 +49,7 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (err) {
