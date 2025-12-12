@@ -11,8 +11,9 @@ app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
   res.send("API Running 🚀");
 });
+app.use("/api/notes", require("./routes/note"));
 
-// JSON parse error handler (catches invalid/malformed JSON sent to express.json)
+
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
     return res
@@ -24,7 +25,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Generic error handler
+
 app.use((err, req, res, next) => {
   console.error(err && err.stack ? err.stack : err);
   res
