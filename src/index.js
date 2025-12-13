@@ -1,8 +1,14 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
+
 const connectDB = require("./config/db");
 const cors = require("cors");
 const app = express();
+const server = http.createServer(app);
+
+require("../socket")(server);
+const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 app.use(cors());
 app.use(express.json());
@@ -12,19 +18,19 @@ app.get("/", (req, res) => {
   res.send("API Running 🚀");
 });
 app.use("/api/notes", require("./routes/note"));
+app.use("/api/folders", require("./routes/folderRoutes"));
+app.use("/api/files", require("./routes/fileRoutes"));
 
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
-    return res
-      .status(400)
-      .json({
-        msg: "Invalid JSON payload. Ensure request body is valid JSON with double-quoted property names.",
-      });
+    return res.status(400).json({
+      msg: "Invalid JSON payload. Ensure request body is valid JSON with double-quoted property names.",
+    });
   }
   next(err);
 });
-
 
 app.use((err, req, res, next) => {
   console.error(err && err.stack ? err.stack : err);
@@ -33,6 +39,6 @@ app.use((err, req, res, next) => {
     .json({ msg: err && err.message ? err.message : "Internal Server Error" });
 });
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });

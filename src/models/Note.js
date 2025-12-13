@@ -14,6 +14,11 @@ const NoteSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    folder:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"Folder",
+      default:null
+    }
   },
   { timestamps: true }
 );

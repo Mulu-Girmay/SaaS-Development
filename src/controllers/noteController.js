@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Note = require("../models/Note");
+const Folder = require("../models/Folder");
 
 exports.createNote = async (req, res) => {
   try {
@@ -49,5 +50,32 @@ exports.deleteNote = async (req, res) => {
     res.json({ message: "Note deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting note" });
+  }
+};
+exports.moveNoteToFolder = async (req, res) => {
+  try {
+    const note = await Note.findOne({
+      _id: req.params.noteId,
+      user: req.user._id,
+    });
+    if (!note) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+    note.folder = req.body.folderId || null;
+    await note.save();
+  } catch (error) {
+    res.status(500).json({ message: "Error moving note" });
+  }
+};
+exports.getNotesByFolder = async (req, res) => {
+  try {
+    const notes = await Note.find({
+      user: req.user._id,
+      folder: req.params.folderId,
+    });
+
+    res.json(notes);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching notes" });
   }
 };
