@@ -7,7 +7,9 @@ const {
   updateNote,
   deleteNote,
   moveNoteToFolder,
-  getNotesByFolder
+  getNotesByFolder,
+  shareNote,
+  getNote,
 } = require("../controllers/noteController");
 router.post("/", protect, createNote);
 router.get("/", protect, getNotes);
@@ -15,5 +17,6 @@ router.put("/:id", protect, updateNote);
 router.delete("/:id", protect, deleteNote);
 router.put("/:noteId/move", protect, moveNoteToFolder);
 router.get("/folder/:folderId", protect, getNotesByFolder);
-
+router.post("/:id/share", protect, shareNote);
+router.get("/:id", protect, getNote);
 module.exports = router;

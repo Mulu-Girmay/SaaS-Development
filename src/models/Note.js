@@ -18,7 +18,19 @@ const NoteSchema = new mongoose.Schema(
       type:mongoose.Schema.Types.ObjectId,
       ref:"Folder",
       default:null
+    },
+    collaborators:[
+      {user:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    permission:{
+        type: String,
+      enum: ["read", "write"],
+      default: "read",
     }
+  }
+  ]
   },
   { timestamps: true }
 );

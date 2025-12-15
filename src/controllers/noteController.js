@@ -1,7 +1,8 @@
 const User = require("../models/User");
 const Note = require("../models/Note");
 const Folder = require("../models/Folder");
-
+const { canReadNote } = require("../utils/permission");
+const { canWriteNote } = require("../utils/permission");
 exports.createNote = async (req, res) => {
   try {
     let { title, content } = req.body;
@@ -15,6 +16,7 @@ exports.createNote = async (req, res) => {
 exports.getNotes = async (req, res) => {
   try {
     let notes = await Note.find({ user: req.user._id }).sort("-updatedAt");
+
     res.json(notes);
   } catch (err) {
     return res.status(404).json({ message: "Error fetching notes" });
@@ -24,8 +26,8 @@ exports.updateNote = async (req, res) => {
   try {
     let id = req.params.id;
     const note = await Note.findOne({ _id: id, user: req.user._id });
-    if (!note) {
-      return res.status(404).json({ message: "Note not found" });
+    if (!note || !canWriteNote(note, req.user._id)) {
+       return res.status(403).json({ message: "Write access denied" });
     }
     note.title = req.body.title ?? note.title;
     note.content = req.body.content ?? note.content;
@@ -78,4 +80,53 @@ exports.getNotesByFolder = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error fetching notes" });
   }
+};
+
+exports.shareNote = async (req, res) => {
+  const { email, permission } = req.body;
+
+  try {
+    const note = await Note.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!note) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+
+    const userToShare = await User.findOne({ email });
+
+    if (!userToShare) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const alreadyShared = note.collaborators.find(
+      (c) => c.user.toString() === userToShare._id.toString()
+    );
+
+    if (alreadyShared) {
+      return res.status(400).json({ message: "Already shared" });
+    }
+
+    note.collaborators.push({
+      user: userToShare._id,
+      permission: permission || "read",
+    });
+
+    await note.save();
+
+    res.json({ message: "Note shared successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error sharing note" });
+  }
+};
+exports.getNote = async (req, res) => {
+  const note = await Note.findById(req.params.id);
+
+  if (!note || !canReadNote(note, req.user._id)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  res.json(note);
 };
