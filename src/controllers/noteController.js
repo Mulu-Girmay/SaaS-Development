@@ -1,13 +1,19 @@
 const User = require("../models/User");
 const Note = require("../models/Note");
 const Folder = require("../models/Folder");
+const NoteVersion = require("../models/NoteVersion");
 const { canReadNote } = require("../utils/permission");
 const { canWriteNote } = require("../utils/permission");
+const { logActivity } = require("../utils/activityLogger");
 exports.createNote = async (req, res) => {
   try {
     let { title, content } = req.body;
     const newNote = await Note.create({ title, content, user: req.user._id });
-
+await logActivity({
+  action: "NOTE_CREATED",
+  user: req.user._id,
+  note: note._id,
+});
     res.status(201).json(newNote);
   } catch (err) {
     return res.status(404).json({ message: "Error creating note" });
@@ -29,8 +35,20 @@ exports.updateNote = async (req, res) => {
     if (!note || !canWriteNote(note, req.user._id)) {
        return res.status(403).json({ message: "Write access denied" });
     }
+     await NoteVersion.create({
+    note: note._id,
+    title: note.title,
+    content: note.content,
+    editedBy: req.user._id,
+  })
     note.title = req.body.title ?? note.title;
     note.content = req.body.content ?? note.content;
+    await logActivity({
+  action: "NOTE_UPDATED",
+  user: req.user._id,
+  note: note._id,
+});
+
     await note.save();
     res.json(note);
   } catch (err) {
@@ -113,6 +131,15 @@ exports.shareNote = async (req, res) => {
       user: userToShare._id,
       permission: permission || "read",
     });
+await logActivity({
+  action: "NOTE_SHARED",
+  user: req.user._id,
+  note: note._id,
+  meta: {
+    sharedWith: userToShare.email,
+    permission,
+  },
+});
 
     await note.save();
 
@@ -129,4 +156,44 @@ exports.getNote = async (req, res) => {
   }
 
   res.json(note);
+};
+exports.getNoteVersions = async (req, res) => {
+  const note = await Note.findById(req.params.id);
+
+  if (!note || !canReadNote(note, req.user._id)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const versions = await NoteVersion.find({ note: note._id })
+    .sort("-createdAt")
+    .populate("editedBy", "name email");
+
+  res.json(versions);
+};
+exports.restoreVersion = async (req, res) => {
+  const note = await Note.findById(req.params.id);
+
+  if (!note || note.user.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: "Only owner can restore" });
+  }
+
+  const version = await NoteVersion.findById(req.params.versionId);
+
+  if (!version) {
+    return res.status(404).json({ message: "Version not found" });
+  }
+
+  // Save current as version before restoring
+  await NoteVersion.create({
+    note: note._id,
+    title: note.title,
+    content: note.content,
+    editedBy: req.user._id,
+  });
+
+  note.title = version.title;
+  note.content = version.content;
+  await note.save();
+
+  res.json({ message: "Version restored", note });
 };

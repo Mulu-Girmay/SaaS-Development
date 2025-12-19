@@ -6,7 +6,10 @@ const connectDB = require("./config/db");
 const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
+const {authLimiter,apiLimiter} = require("./middleware/rateLimiter")
+const helmet = require("helmet");
 
+const errorHandler = require("./middleware/errorHandler");
 require("../socket")(server);
 const path = require("path");
 const authRoutes = require("./routes/authRoutes");
@@ -17,10 +20,13 @@ app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
   res.send("API Running 🚀");
 });
+
+app.use(errorHandler);
+
 app.use("/api/notes", require("./routes/note"));
 app.use("/api/folders", require("./routes/folderRoutes"));
 app.use("/api/files", require("./routes/fileRoutes"));
-
+app.use(helmet());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use((err, req, res, next) => {
@@ -31,6 +37,11 @@ app.use((err, req, res, next) => {
   }
   next(err);
 });
+if (process.env.NODE_ENV !== "test") {
+  app.use("/api/auth", authLimiter);
+  app.use("/api", apiLimiter);
+}
+
 
 app.use((err, req, res, next) => {
   console.error(err && err.stack ? err.stack : err);
@@ -42,3 +53,4 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });
+module.exports = app
