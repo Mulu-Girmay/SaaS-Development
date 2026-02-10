@@ -1,4 +1,7 @@
-require("dotenv").config();
+const path = require("path");
+const dotenv = require("dotenv");
+const envFile = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
+dotenv.config({ path: path.join(__dirname, "..", envFile) });
 const express = require("express");
 const http = require("http");
 
@@ -6,16 +9,15 @@ const connectDB = require("./config/db");
 const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
-const {authLimiter,apiLimiter} = require("./middleware/rateLimiter")
+const { authLimiter, apiLimiter } = require("./middleware/rateLimiter");
 const helmet = require("helmet");
 
 const errorHandler = require("./middleware/errorHandler");
 require("../socket")(server);
-const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 app.use(cors());
 app.use(express.json());
-connectDB();
+
 app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
   res.send("API Running 🚀");
@@ -42,7 +44,6 @@ if (process.env.NODE_ENV !== "test") {
   app.use("/api", apiLimiter);
 }
 
-
 app.use((err, req, res, next) => {
   console.error(err && err.stack ? err.stack : err);
   res
@@ -50,7 +51,8 @@ app.use((err, req, res, next) => {
     .json({ msg: err && err.message ? err.message : "Internal Server Error" });
 });
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
+  await connectDB();
   console.log(`server is running on port ${PORT}`);
 });
-module.exports = app
+module.exports = app;

@@ -23,7 +23,7 @@ export default function Dashboard() {
   };
   useEffect(() => {
     loadNotes();
-  }, [notes]);
+  }, []);
   const handleCreate = async (data) => {
     await createNote(data);
     loadNotes();
@@ -61,61 +61,73 @@ export default function Dashboard() {
     alert("Note shared");
   };
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="mt-2">Welcome, {auth?.user?.name}</p>
-      <div className="grid grid-cols-3 gap-4 p-6">
-        <div className="col-span-1">
-          <CreateNote onCreate={handleCreate} />
-          <NotesList
-            notes={notes}
-            onSelect={handleSelect}
-            onDelete={handleDelete}
-          />
+    <div className="page">
+      <div className="dashboard-shell">
+        <div className="dashboard-header">
+          <div>
+            <div className="section-title">Workspace</div>
+            <h1 className="text-3xl font-semibold mt-2">Dashboard</h1>
+            <p className="text-slate-600 mt-1">
+              Welcome back, {auth?.user?.name}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button className="btn btn-secondary" onClick={logout}>
+              Logout
+            </button>
+          </div>
         </div>
+        <div className="dashboard-grid">
+          <aside className="panel space-y-6">
+            <div>
+              <div className="section-title">Create</div>
+              <CreateNote onCreate={handleCreate} />
+            </div>
+            <div>
+              <div className="section-title mb-3">Your Notes</div>
+              <NotesList
+                notes={notes}
+                onSelect={handleSelect}
+                onDelete={handleDelete}
+              />
+            </div>
+          </aside>
 
-        <div className="col-span-2 border p-4 rounded">
-          {activeNote ? (
-            <>
-              <h2 className="text-xl font-bold">{activeNote.title}</h2>
-              <p className="mt-2">{activeNote.content}</p>
-            </>
-          ) : (
-            <p>Select a note to view</p>
-          )}
+          <section className="panel">
+            {activeNote ? (
+              isEditing ? (
+                <EditNote
+                  note={activeNote}
+                  onSave={handleSave}
+                  onCancel={() => setIsEditing(false)}
+                />
+              ) : (
+                <ViewNote
+                  note={activeNote}
+                  canWrite={canWrite(activeNote)}
+                  onEdit={() => setIsEditing(true)}
+                />
+              )
+            ) : (
+              <div className="empty-state">
+                Select a note to view or create a new one.
+              </div>
+            )}
+
+            {canWrite(activeNote) && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowShare(!showShare)}
+                  className="btn btn-accent"
+                >
+                  Share
+                </button>
+                {showShare && <ShareNote onShare={handleShare} />}
+              </div>
+            )}
+          </section>
         </div>
       </div>
-      {activeNote &&
-        (isEditing ? (
-          <EditNote
-            note={activeNote}
-            onSave={handleSave}
-            onCancel={() => setIsEditing(false)}
-          />
-        ) : (
-          <ViewNote
-            note={activeNote}
-            canWrite={canWrite(activeNote)}
-            onEdit={() => setIsEditing(true)}
-          />
-        ))}
-      {canWrite(activeNote) && (
-        <button
-          onClick={() => setShowShare(!showShare)}
-          className="mt-4 bg-purple-500 text-white px-4 py-2 rounded"
-        >
-          Share
-        </button>
-      )}
-
-      {showShare && <ShareNote onShare={handleShare} />}
-
-      <button
-        onClick={logout}
-        className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
-      >
-        Logout
-      </button>
     </div>
   );
 }

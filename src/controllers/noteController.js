@@ -12,7 +12,7 @@ exports.createNote = async (req, res) => {
 await logActivity({
   action: "NOTE_CREATED",
   user: req.user._id,
-  note: note._id,
+  note: newNote._id,
 });
     res.status(201).json(newNote);
   } catch (err) {
@@ -21,7 +21,12 @@ await logActivity({
 };
 exports.getNotes = async (req, res) => {
   try {
-    let notes = await Note.find({ user: req.user._id }).sort("-updatedAt");
+    let notes = await Note.find({
+      $or: [
+        { user: req.user._id },
+        { "collaborators.user": req.user._id },
+      ],
+    }).sort("-updatedAt");
 
     res.json(notes);
   } catch (err) {
@@ -31,7 +36,7 @@ exports.getNotes = async (req, res) => {
 exports.updateNote = async (req, res) => {
   try {
     let id = req.params.id;
-    const note = await Note.findOne({ _id: id, user: req.user._id });
+    const note = await Note.findById(id);
     if (!note || !canWriteNote(note, req.user._id)) {
        return res.status(403).json({ message: "Write access denied" });
     }
@@ -83,6 +88,7 @@ exports.moveNoteToFolder = async (req, res) => {
     }
     note.folder = req.body.folderId || null;
     await note.save();
+    res.json({ message: "Note moved", note });
   } catch (error) {
     res.status(500).json({ message: "Error moving note" });
   }

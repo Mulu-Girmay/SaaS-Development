@@ -11,29 +11,35 @@ export default function ShareNote({ onShare }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-2 mt-4">
-      <h3 className="font-semibold">Share Note</h3>
+    <form onSubmit={submit} className="mt-6 space-y-4">
+      <div>
+        <div className="section-title">Collaborate</div>
+        <h3 className="text-lg font-semibold mt-1">Share this note</h3>
+        <p className="text-sm text-slate-500 mt-1">
+          Invite a teammate and set their permission.
+        </p>
+      </div>
 
-      <input
-        type="email"
-        placeholder="User email"
-        className="border p-2 w-full"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+      <div className="grid gap-3 md:grid-cols-2">
+        <input
+          type="email"
+          placeholder="User email"
+          className="input"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-      <select
-        className="border p-2 w-full"
-        value={permission}
-        onChange={(e) => setPermission(e.target.value)}
-      >
-        <option value="read">Read</option>
-        <option value="write">Write</option>
-      </select>
+        <select
+          className="input"
+          value={permission}
+          onChange={(e) => setPermission(e.target.value)}
+        >
+          <option value="read">Read</option>
+          <option value="write">Write</option>
+        </select>
+      </div>
 
-      <button className="bg-purple-500 text-white px-4 py-2 rounded">
-        Share
-      </button>
+      <button className="btn btn-accent">Send Invite</button>
     </form>
   );
 }

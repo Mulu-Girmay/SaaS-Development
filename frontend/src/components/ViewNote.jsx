@@ -2,18 +2,24 @@ export default function ViewNote({ note, canWrite, onEdit }) {
   if (!note) return null;
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold">{note.title}</h2>
-      <p className="mt-4 whitespace-pre-wrap">{note.content}</p>
-
-      {canWrite && (
-        <button
-          onClick={onEdit}
-          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Edit
-        </button>
-      )}
+    <div className="space-y-4">
+      <div className="section-title">Selected Note</div>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold">{note.title}</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Last updated {new Date(note.updatedAt).toLocaleString()}
+          </p>
+        </div>
+        {canWrite && (
+          <button onClick={onEdit} className="btn btn-secondary">
+            Edit
+          </button>
+        )}
+      </div>
+      <div className="rounded-2xl bg-white/70 border border-slate-200 p-5">
+        <p className="whitespace-pre-wrap text-slate-700">{note.content}</p>
+      </div>
     </div>
   );
 }

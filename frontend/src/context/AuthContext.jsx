@@ -8,7 +8,7 @@ export const AuthProvider =({children})=>{
   }
   const logout = ()=>{
     setAuth(null);
-    localStorage.removeItem("user")
+    localStorage.removeItem("auth")
   }
 
   return (

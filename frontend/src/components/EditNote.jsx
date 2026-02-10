@@ -12,28 +12,31 @@ export default function EditNote({ note, onSave, onCancel }) {
   }, [note]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
+      <div className="section-title">Editing</div>
       <input
-        className="border p-2 w-full"
+        className="input"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        placeholder="Title"
       />
 
       <textarea
-        className="border p-2 w-full h-40"
+        className="input h-48"
         value={content}
         onChange={(e) => setContent(e.target.value)}
+        placeholder="Write your update..."
       />
 
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           onClick={() => onSave(note._id, { title, content })}
-          className="bg-green-500 text-white px-4 py-2 rounded"
+          className="btn btn-primary"
         >
           Save
         </button>
 
-        <button onClick={onCancel} className="bg-gray-300 px-4 py-2 rounded">
+        <button onClick={onCancel} className="btn btn-secondary">
           Cancel
         </button>
       </div>

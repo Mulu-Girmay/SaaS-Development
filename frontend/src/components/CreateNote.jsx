@@ -12,22 +12,20 @@ export default function CreateNote({ onCreate }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-2">
+    <form onSubmit={submit} className="space-y-3">
       <input
         placeholder="Title"
-        className="border p-2 w-full"
+        className="input"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <textarea
         placeholder="Content"
-        className="border p-2 w-full"
+        className="input h-28"
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
-      <button className="bg-blue-500 text-white px-4 py-2 rounded">
-        Create Note
-      </button>
+      <button className="btn btn-primary w-full">Create Note</button>
     </form>
   );
 }

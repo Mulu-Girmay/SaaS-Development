@@ -1,47 +1,63 @@
-import React from 'react'
-import { useState , useContext } from 'react'
-import api from "../api/axios"
-import { AuthContext } from '../context/AuthContext'
-
-import { useNavigate } from 'react-router-dom'
+import React from "react";
+import { useState, useContext } from "react";
+import api from "../api/axios";
+import { AuthContext } from "../context/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
 export default function Login() {
-    const navigate = useNavigate()
-  const { login } = useContext(AuthContext)
+  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await api.post("/auth/login", { email, password });
-        console.log(res.data)
+      console.log(res.data);
       login(res.data);
-    navigate("/dashboard")
+      navigate("/dashboard");
       alert("Login successful");
     } catch (err) {
       alert(err.response?.data?.message || "Login failed");
     }
   };
   return (
-      <div className="flex justify-center items-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-black p-6 rounded shadow-md w-80">
-        <h1 className="text-xl font-bold mb-4">Login</h1>
-        <input
-          type="email"
-          placeholder="Email"
-          className="border p-2 mb-4 w-full"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="border p-2 mb-4 w-full"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button className="bg-blue-500 text-white p-2 w-full rounded">Login</button>
-      </form>
+    <div className="page">
+      <div className="auth-shell">
+        <div className="auth-hero">
+          <h1>Your notes. Shared, secure, and fast.</h1>
+          <p>
+            Keep ideas organized, share with your team, and never lose track of
+            changes. Welcome back.
+          </p>
+        </div>
+        <div className="card">
+          <div className="section-title">Sign In</div>
+          <h2 className="text-2xl font-semibold mt-2">Login</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            New here?{" "}
+            <Link className="text-slate-900 font-semibold" to="/register">
+              Create an account
+            </Link>
+          </p>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <input
+              type="email"
+              placeholder="Email"
+              className="input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button className="btn btn-primary w-full">Login</button>
+          </form>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
-

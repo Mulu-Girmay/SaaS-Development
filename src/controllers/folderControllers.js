@@ -1,6 +1,7 @@
 const Folder = require("../models/Folder");
 const User = require("../models/User");
-const ActivityLog = require("../models/ActivityLog");
+const Note = require("../models/Note");
+const { logActivity } = require("../utils/activityLogger");
 exports.createFolder = async (req, res) => {
   try {
     const { name } = req.body;
@@ -30,7 +31,7 @@ exports.getFolders = async (req, res) => {
 exports.deleteFolder = async (req, res) => {
   try {
     const folder = await Folder.findOneAndDelete({
-      _id: req.params.is,
+      _id: req.params.id,
       user: req.user._id,
     });
     if (!folder) {
