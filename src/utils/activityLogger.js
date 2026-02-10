@@ -1,4 +1,5 @@
 const ActivityLog = require("../models/ActivityLog");
+const AnalyticsEvent = require("../models/AnalyticsEvent");
 
 exports.logActivity = async ({ action, user, note, meta = {} }) => {
   try {
@@ -6,6 +7,11 @@ exports.logActivity = async ({ action, user, note, meta = {} }) => {
       action,
       user,
       note,
+      meta,
+    });
+    await AnalyticsEvent.create({
+      user,
+      event: action,
       meta,
     });
   } catch (err) {

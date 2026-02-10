@@ -15,10 +15,22 @@ const helmet = require("helmet");
 const errorHandler = require("./middleware/errorHandler");
 require("../socket")(server);
 const authRoutes = require("./routes/authRoutes");
+const inviteRoutes = require("./routes/inviteRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const teamRoutes = require("./routes/teamRoutes");
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/invites", inviteRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/teams", teamRoutes);
+app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/audit", auditRoutes);
 app.get("/", (req, res) => {
   res.send("API Running 🚀");
 });

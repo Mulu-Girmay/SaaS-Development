@@ -9,6 +9,7 @@ const NoteVersionSchema = new mongoose.Schema(
     },
     title: String,
     content: String,
+    tags: [String],
     editedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

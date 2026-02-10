@@ -1,3 +1,6 @@
+import DOMPurify from "dompurify";
+import { marked } from "marked";
+
 export default function ViewNote({ note, canWrite, onEdit }) {
   if (!note) return null;
 
@@ -17,8 +20,25 @@ export default function ViewNote({ note, canWrite, onEdit }) {
           </button>
         )}
       </div>
-      <div className="rounded-2xl bg-white/70 border border-slate-200 p-5">
-        <p className="whitespace-pre-wrap text-slate-700">{note.content}</p>
+      <div className="rounded-2xl bg-white/70 border border-slate-200 p-5 markdown">
+        <div
+          className="text-slate-700"
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize(marked.parse(note.content || "")),
+          }}
+        />
+        {Array.isArray(note.tags) && note.tags.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {note.tags.map((tag) => (
+              <span
+                key={tag}
+                className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

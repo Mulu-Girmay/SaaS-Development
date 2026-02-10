@@ -9,6 +9,12 @@ const NoteSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -34,4 +40,5 @@ const NoteSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+NoteSchema.index({ title: "text", content: "text", tags: "text" });
 module.exports = mongoose.model("Note", NoteSchema);

@@ -2,18 +2,26 @@ const User = require("../models/User");
 const Note = require("../models/Note");
 const Folder = require("../models/Folder");
 const NoteVersion = require("../models/NoteVersion");
+const ShareInvite = require("../models/ShareInvite");
+const { createNotification } = require("../utils/notify");
+const { sendMail } = require("../utils/mailer");
 const { canReadNote } = require("../utils/permission");
 const { canWriteNote } = require("../utils/permission");
 const { logActivity } = require("../utils/activityLogger");
 exports.createNote = async (req, res) => {
   try {
-    let { title, content } = req.body;
-    const newNote = await Note.create({ title, content, user: req.user._id });
-await logActivity({
-  action: "NOTE_CREATED",
-  user: req.user._id,
-  note: newNote._id,
-});
+    let { title, content, tags } = req.body;
+    const newNote = await Note.create({
+      title,
+      content,
+      tags: Array.isArray(tags) ? tags : [],
+      user: req.user._id,
+    });
+    await logActivity({
+      action: "NOTE_CREATED",
+      user: req.user._id,
+      note: newNote._id,
+    });
     res.status(201).json(newNote);
   } catch (err) {
     return res.status(404).json({ message: "Error creating note" });
@@ -21,12 +29,15 @@ await logActivity({
 };
 exports.getNotes = async (req, res) => {
   try {
-    let notes = await Note.find({
-      $or: [
-        { user: req.user._id },
-        { "collaborators.user": req.user._id },
-      ],
-    }).sort("-updatedAt");
+    const { q, tag } = req.query;
+    const accessFilter = {
+      $or: [{ user: req.user._id }, { "collaborators.user": req.user._id }],
+    };
+    const query = { ...accessFilter };
+    if (tag) query.tags = tag;
+    if (q) query.$text = { $search: q };
+
+    let notes = await Note.find(query).sort("-updatedAt");
 
     res.json(notes);
   } catch (err) {
@@ -38,21 +49,25 @@ exports.updateNote = async (req, res) => {
     let id = req.params.id;
     const note = await Note.findById(id);
     if (!note || !canWriteNote(note, req.user._id)) {
-       return res.status(403).json({ message: "Write access denied" });
+      return res.status(403).json({ message: "Write access denied" });
     }
-     await NoteVersion.create({
-    note: note._id,
-    title: note.title,
-    content: note.content,
-    editedBy: req.user._id,
-  })
+    await NoteVersion.create({
+      note: note._id,
+      title: note.title,
+      content: note.content,
+      tags: note.tags,
+      editedBy: req.user._id,
+    });
     note.title = req.body.title ?? note.title;
     note.content = req.body.content ?? note.content;
+    if (Array.isArray(req.body.tags)) {
+      note.tags = req.body.tags;
+    }
     await logActivity({
-  action: "NOTE_UPDATED",
-  user: req.user._id,
-  note: note._id,
-});
+      action: "NOTE_UPDATED",
+      user: req.user._id,
+      note: note._id,
+    });
 
     await note.save();
     res.json(note);
@@ -126,30 +141,50 @@ exports.shareNote = async (req, res) => {
     }
 
     const alreadyShared = note.collaborators.find(
-      (c) => c.user.toString() === userToShare._id.toString()
+      (c) => c.user.toString() === userToShare._id.toString(),
     );
 
     if (alreadyShared) {
       return res.status(400).json({ message: "Already shared" });
     }
 
-    note.collaborators.push({
-      user: userToShare._id,
+    const existingInvite = await ShareInvite.findOne({
+      note: note._id,
+      toUser: userToShare._id,
+      status: "pending",
+    });
+    if (existingInvite) {
+      return res.status(400).json({ message: "Invite already pending" });
+    }
+
+    await ShareInvite.create({
+      note: note._id,
+      fromUser: req.user._id,
+      toUser: userToShare._id,
       permission: permission || "read",
     });
-await logActivity({
-  action: "NOTE_SHARED",
-  user: req.user._id,
-  note: note._id,
-  meta: {
-    sharedWith: userToShare.email,
-    permission,
-  },
-});
+    await createNotification({
+      user: userToShare._id,
+      type: "invite",
+      message: `You have been invited to "${note.title}"`,
+      meta: { noteId: note._id },
+    });
+    await sendMail({
+      to: userToShare.email,
+      subject: "You have a new note invite",
+      text: `${req.user.name || "Someone"} invited you to "${note.title}".`,
+    });
+    await logActivity({
+      action: "NOTE_SHARED",
+      user: req.user._id,
+      note: note._id,
+      meta: {
+        sharedWith: userToShare.email,
+        permission,
+      },
+    });
 
-    await note.save();
-
-    res.json({ message: "Note shared successfully" });
+    res.json({ message: "Invite sent successfully" });
   } catch (err) {
     res.status(500).json({ message: "Error sharing note" });
   }
@@ -189,16 +224,19 @@ exports.restoreVersion = async (req, res) => {
     return res.status(404).json({ message: "Version not found" });
   }
 
-  // Save current as version before restoring
   await NoteVersion.create({
     note: note._id,
     title: note.title,
     content: note.content,
+    tags: note.tags,
     editedBy: req.user._id,
   });
 
   note.title = version.title;
   note.content = version.content;
+  if (Array.isArray(version.tags)) {
+    note.tags = version.tags;
+  }
   await note.save();
 
   res.json({ message: "Version restored", note });
