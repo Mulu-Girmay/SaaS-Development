@@ -26,7 +26,7 @@ export default function CreateNote({ onCreate }) {
         onChange={(e) => setTitle(e.target.value)}
       />
       <textarea
-        placeholder="Content"
+        placeholder="What is the update?"
         className="input h-28"
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -37,7 +37,9 @@ export default function CreateNote({ onCreate }) {
         value={tags}
         onChange={(e) => setTags(e.target.value)}
       />
-      <button className="btn btn-primary w-full">Create Note</button>
+      <div className="create-actions">
+        <button className="btn btn-primary w-full">Create Note</button>
+      </div>
     </form>
   );
 }

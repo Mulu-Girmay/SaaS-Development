@@ -122,6 +122,15 @@ a {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
+.btn-icon {
+  gap: 10px;
+}
+
+.btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
 .btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
@@ -144,6 +153,240 @@ a {
 
 .dashboard-shell {
   width: min(1200px, 100%);
+}
+
+.app-page {
+  align-items: flex-start;
+}
+
+.app-shell {
+  width: min(1400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.app-topbar {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  padding: clamp(18px, 3vw, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.app-title {
+  font-size: clamp(28px, 3vw, 36px);
+  margin: 6px 0 4px;
+}
+
+.app-subtitle {
+  color: #475569;
+  margin: 0;
+}
+
+.app-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-search {
+  min-width: min(320px, 70vw);
+}
+
+.app-body {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2.2fr) minmax(260px, 1fr);
+  align-items: start;
+}
+
+.app-sidebar,
+.app-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-main {
+  min-height: 620px;
+}
+
+.panel-tight {
+  padding: 16px;
+}
+
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.folder-item {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  padding: 10px 12px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.folder-item span {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.folder-item.active,
+.folder-item:hover {
+  border-color: #1d4ed8;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-row {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.note-row.active {
+  border-color: #14b8a6;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+  transform: translateY(-1px);
+}
+
+.note-main {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.note-snippet {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.note-meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.note-tags {
+  display: inline-flex;
+  gap: 6px;
+  color: #475569;
+}
+
+.note-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.note-body {
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 20px;
+}
+
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.create-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.toolbar-btn {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.toolbar-btn:hover {
+  border-color: #1d4ed8;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+}
+
+.activity-item {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.activity-message {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.activity-meta {
+  font-size: 11px;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 600;
 }
 
 .dashboard-header {
@@ -233,6 +476,19 @@ a {
 @media (max-width: 900px) {
   .auth-shell {
     grid-template-columns: 1fr;
+  }
+
+  .app-body {
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-search {
+    width: 100%;
   }
 
   .dashboard-grid {

@@ -16,7 +16,7 @@ export default function AdminPanel({ analytics, auditLogs }) {
                 {log.action}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                {log.user?.email || "User"} Â·{" "}
+                {log.user?.email || "User"} ·{" "}
                 {new Date(log.createdAt).toLocaleString()}
               </div>
             </div>

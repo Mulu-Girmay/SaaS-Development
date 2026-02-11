@@ -1,7 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import React from "react";
 import {
   getNotes,
   getNote,
@@ -19,7 +18,7 @@ import { updateNote, shareNote } from "../api/notes";
 import NoteVersions from "../components/NoteVersions";
 import InviteList from "../components/InviteList";
 import { getInvites, acceptInvite, declineInvite } from "../api/invites";
-import NotificationList from "../components/NotificationList";
+import ActivityLog from "../components/ActivityLog";
 import { getNotifications, markNotificationsRead } from "../api/notifications";
 import TeamPanel from "../components/TeamPanel";
 import SubscriptionPanel from "../components/SubscriptionPanel";
@@ -131,22 +130,49 @@ export default function Dashboard() {
     loadAdminData();
   }, [search, tag]);
   const handleCreate = async (data) => {
-    await createNote(data);
-    loadNotes();
+    try {
+      await createNote(data);
+      loadNotes();
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        navigate("/login");
+        return;
+      }
+      setError("Failed to create note. Please try again.");
+    }
   };
   const handleSelect = async (id) => {
-    const res = await getNote(id);
-    setActiveNote(res.data);
-    setIsEditing(false);
-    setShowVersions(false);
-    const versionsRes = await getNoteVersions(id);
-    setVersions(versionsRes.data);
+    try {
+      const res = await getNote(id);
+      setActiveNote(res.data);
+      setIsEditing(false);
+      setShowVersions(false);
+      const versionsRes = await getNoteVersions(id);
+      setVersions(versionsRes.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        navigate("/login");
+        return;
+      }
+      setError("Failed to load note. Please try again.");
+    }
   };
 
   const handleDelete = async (id) => {
-    await deleteNote(id);
-    loadNotes();
-    setActiveNote(null);
+    try {
+      await deleteNote(id);
+      loadNotes();
+      setActiveNote(null);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        navigate("/login");
+        return;
+      }
+      setError("Failed to delete note. Please try again.");
+    }
   };
 
   const canWrite = (note) => {
@@ -160,27 +186,54 @@ export default function Dashboard() {
   };
 
   const handleSave = async (id, data) => {
-    await updateNote(id, data);
-    await loadNotes();
-    setIsEditing(false);
-    const res = await getNote(id);
-    setActiveNote(res.data);
-    const versionsRes = await getNoteVersions(id);
-    setVersions(versionsRes.data);
+    try {
+      await updateNote(id, data);
+      await loadNotes();
+      setIsEditing(false);
+      const res = await getNote(id);
+      setActiveNote(res.data);
+      const versionsRes = await getNoteVersions(id);
+      setVersions(versionsRes.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        navigate("/login");
+        return;
+      }
+      setError("Failed to save note. Please try again.");
+    }
   };
 
   const handleShare = async (data) => {
-    await shareNote(activeNote._id, data);
-    alert("Note shared");
+    try {
+      await shareNote(activeNote._id, data);
+      alert("Note shared");
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        navigate("/login");
+        return;
+      }
+      setError("Failed to share note. Please try again.");
+    }
   };
   const handleRestore = async (versionId) => {
     if (!activeNote?._id) return;
-    await restoreNoteVersion(activeNote._id, versionId);
-    const res = await getNote(activeNote._id);
-    setActiveNote(res.data);
-    const versionsRes = await getNoteVersions(activeNote._id);
-    setVersions(versionsRes.data);
-    setIsEditing(false);
+    try {
+      await restoreNoteVersion(activeNote._id, versionId);
+      const res = await getNote(activeNote._id);
+      setActiveNote(res.data);
+      const versionsRes = await getNoteVersions(activeNote._id);
+      setVersions(versionsRes.data);
+      setIsEditing(false);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        logout();
+        navigate("/login");
+        return;
+      }
+      setError("Failed to restore version. Please try again.");
+    }
   };
   const handleInviteAccept = async (id) => {
     await acceptInvite(id);
@@ -208,20 +261,36 @@ export default function Dashboard() {
     await loadSubscription();
   };
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const folderTags = Array.from(
+    new Set(
+      notes
+        .flatMap((note) => (Array.isArray(note.tags) ? note.tags : []))
+        .filter(Boolean)
+    )
+  );
   return (
-    <div className="page">
-      <div className="dashboard-shell">
-        <div className="dashboard-header">
+    <div className="page app-page">
+      <div className="app-shell">
+        <header className="app-topbar">
           <div>
             <div className="section-title">Workspace</div>
-            <h1 className="text-3xl font-semibold mt-2">Dashboard</h1>
-            <p className="text-slate-600 mt-1">
-              Welcome back, {auth?.user?.name}
+            <h1 className="app-title">Notes Hub</h1>
+            <p className="app-subtitle">
+              Welcome back, {auth?.user?.name}. Capture updates and share
+              progress with your team.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="app-topbar-actions">
+            <div className="app-search">
+              <input
+                className="input"
+                placeholder="Search notes, people, tags"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <div className="relative">
-              <button className="btn btn-secondary">Notifications</button>
+              <button className="btn btn-secondary">Activity</button>
               {unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-xs font-bold rounded-full px-2 py-0.5">
                   {unreadCount}
@@ -232,25 +301,50 @@ export default function Dashboard() {
               Logout
             </button>
           </div>
-        </div>
-        <div className="dashboard-grid">
-          <aside className="panel space-y-6">
-            <div>
-              <div className="section-title">Create</div>
+        </header>
+
+        <div className="app-body">
+          <aside className="app-sidebar">
+            <div className="panel panel-tight">
+              <div className="section-title">Quick Capture</div>
               <CreateNote onCreate={handleCreate} />
             </div>
-            <div>
-              <div className="section-title mb-3">Your Notes</div>
-              {error && (
-                <div className="mb-3 text-sm text-red-600">{error}</div>
-              )}
-              <div className="space-y-3 mb-4">
-                <input
-                  className="input"
-                  placeholder="Search notes"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+
+            <div className="panel panel-tight">
+              <div className="section-title">Folders</div>
+              <div className="folder-list">
+                <button
+                  className={`folder-item ${tag === "" ? "active" : ""}`}
+                  onClick={() => setTag("")}
+                >
+                  All Notes
+                  <span>{notes.length}</span>
+                </button>
+                {folderTags.map((folder) => (
+                  <button
+                    key={folder}
+                    className={`folder-item ${tag === folder ? "active" : ""}`}
+                    onClick={() => setTag(folder)}
+                  >
+                    {folder}
+                    <span>
+                      {
+                        notes.filter((note) =>
+                          Array.isArray(note.tags)
+                            ? note.tags.includes(folder)
+                            : false
+                        ).length
+                      }
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel panel-tight">
+              <div className="section-title">Notes</div>
+              {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
+              <div className="mb-4">
                 <input
                   className="input"
                   placeholder="Filter by tag"
@@ -260,45 +354,14 @@ export default function Dashboard() {
               </div>
               <NotesList
                 notes={notes}
+                activeId={activeNote?._id}
                 onSelect={handleSelect}
                 onDelete={handleDelete}
               />
             </div>
-            <div>
-              <div className="section-title mb-3">Invites</div>
-              <InviteList
-                invites={invites}
-                onAccept={handleInviteAccept}
-                onDecline={handleInviteDecline}
-              />
-            </div>
-            <div>
-              <NotificationList
-                notifications={notifications}
-                onMarkRead={handleMarkRead}
-              />
-            </div>
-            <div>
-              <TeamPanel
-                team={team}
-                onCreateTeam={handleCreateTeam}
-                onAddMember={handleAddMember}
-              />
-            </div>
-            <div>
-              <SubscriptionPanel
-                subscription={subscription}
-                onPlanChange={handlePlanChange}
-              />
-            </div>
-            {auth?.user?.role === "admin" && (
-              <div>
-                <AdminPanel analytics={analytics} auditLogs={auditLogs} />
-              </div>
-            )}
           </aside>
 
-          <section className="panel">
+          <main className="app-main panel">
             {activeNote ? (
               isEditing ? (
                 <EditNote
@@ -323,8 +386,24 @@ export default function Dashboard() {
               <div className="mt-6">
                 <button
                   onClick={() => setShowShare(!showShare)}
-                  className="btn btn-accent"
+                  className="btn btn-accent btn-icon"
                 >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="icon"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <path d="M8.6 13.5l6.8 3.9" />
+                    <path d="M15.4 6.6L8.6 10.5" />
+                  </svg>
                   Share
                 </button>
                 {showShare && <ShareNote onShare={handleShare} />}
@@ -349,7 +428,43 @@ export default function Dashboard() {
                 )}
               </div>
             )}
-          </section>
+          </main>
+
+          <aside className="app-right">
+            <div className="panel panel-tight">
+              <ActivityLog
+                notifications={notifications}
+                auditLogs={auditLogs}
+                onMarkRead={handleMarkRead}
+              />
+            </div>
+            <div className="panel panel-tight">
+              <div className="section-title mb-3">Invites</div>
+              <InviteList
+                invites={invites}
+                onAccept={handleInviteAccept}
+                onDecline={handleInviteDecline}
+              />
+            </div>
+            <div className="panel panel-tight">
+              <TeamPanel
+                team={team}
+                onCreateTeam={handleCreateTeam}
+                onAddMember={handleAddMember}
+              />
+            </div>
+            <div className="panel panel-tight">
+              <SubscriptionPanel
+                subscription={subscription}
+                onPlanChange={handlePlanChange}
+              />
+            </div>
+            {auth?.user?.role === "admin" && (
+              <div className="panel panel-tight">
+                <AdminPanel analytics={analytics} auditLogs={auditLogs} />
+              </div>
+            )}
+          </aside>
         </div>
       </div>
     </div>

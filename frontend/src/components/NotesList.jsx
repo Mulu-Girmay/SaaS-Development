@@ -1,32 +1,27 @@
-export default function NotesList({ notes, onSelect, onDelete }) {
+export default function NotesList({ notes, activeId, onSelect, onDelete }) {
   return (
-    <div className="space-y-3">
+    <div className="notes-list">
       {notes.map((note) => (
         <div
           key={note._id}
-          className="note-card"
+          className={`note-row ${activeId === note._id ? "active" : ""}`}
         >
-          <div className="flex-1">
-            <span
-              className="cursor-pointer font-semibold text-slate-800"
-              onClick={() => onSelect(note._id)}
-            >
-              {note.title}
-            </span>
-            {Array.isArray(note.tags) && note.tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {note.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
+          <button className="note-main" onClick={() => onSelect(note._id)}>
+            <div className="note-title">{note.title}</div>
+            <div className="note-snippet">
+              {(note.content || "No content yet.").slice(0, 90)}
+            </div>
+            <div className="note-meta">
+              <span>{new Date(note.updatedAt).toLocaleDateString()}</span>
+              {Array.isArray(note.tags) && note.tags.length > 0 && (
+                <span className="note-tags">
+                  {note.tags.slice(0, 2).map((tag) => (
+                    <span key={tag}>#{tag}</span>
+                  ))}
+                </span>
+              )}
+            </div>
+          </button>
           <button onClick={() => onDelete(note._id)} className="btn btn-secondary">
             Delete
           </button>
