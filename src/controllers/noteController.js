@@ -10,13 +10,20 @@ const { canWriteNote } = require("../utils/permission");
 const { logActivity } = require("../utils/activityLogger");
 exports.createNote = async (req, res) => {
   try {
-    let { title, content, tags } = req.body;
-    const newNote = await Note.create({
+    let { title, content, tags, isTeamNote } = req.body;
+    
+    let noteData = {
       title,
       content,
       tags: Array.isArray(tags) ? tags : [],
       user: req.user._id,
-    });
+    };
+
+    if (isTeamNote && req.user.team) {
+      noteData.team = req.user.team;
+    }
+
+    const newNote = await Note.create(noteData);
     await logActivity({
       action: "NOTE_CREATED",
       user: req.user._id,
@@ -29,15 +36,29 @@ exports.createNote = async (req, res) => {
 };
 exports.getNotes = async (req, res) => {
   try {
-    const { q, tag } = req.query;
-    const accessFilter = {
-      $or: [{ user: req.user._id }, { "collaborators.user": req.user._id }],
-    };
-    const query = { ...accessFilter };
+    const { q, tag, type } = req.query;
+    
+    let query = {};
+
+    if (type === "team") {
+      if (!req.user.team) {
+        return res.json([]); // User has no team
+      }
+      // Fetch notes belonging to the team
+      query.team = req.user.team;
+    } else {
+      // Personal notes + Shared with me (collaborators)
+      // AND ensure it's NOT a team note (unless I created it? stick to separation for now)
+      query = {
+         $or: [{ user: req.user._id }, { "collaborators.user": req.user._id }],
+         team: null // Exclude team notes from personal view for clarity
+      };
+    }
+
     if (tag) query.tags = tag;
     if (q) query.$text = { $search: q };
 
-    let notes = await Note.find(query).sort("-updatedAt");
+    let notes = await Note.find(query).sort("-updatedAt").populate("user", "name"); // Populate creator for team notes
 
     res.json(notes);
   } catch (err) {
@@ -145,35 +166,33 @@ exports.shareNote = async (req, res) => {
     );
 
     if (alreadyShared) {
-      return res.status(400).json({ message: "Already shared" });
+      // Update permission if already shared
+      alreadyShared.permission = permission || "read";
+      await note.save();
+      return res.json({ message: "Permissions updated" });
     }
 
-    const existingInvite = await ShareInvite.findOne({
-      note: note._id,
-      toUser: userToShare._id,
-      status: "pending",
-    });
-    if (existingInvite) {
-      return res.status(400).json({ message: "Invite already pending" });
-    }
-
-    await ShareInvite.create({
-      note: note._id,
-      fromUser: req.user._id,
-      toUser: userToShare._id,
+    // Direct Share - Add to collaborators immediately
+    note.collaborators.push({
+      user: userToShare._id,
       permission: permission || "read",
     });
+
+    await note.save();
+
     await createNotification({
       user: userToShare._id,
-      type: "invite",
-      message: `You have been invited to "${note.title}"`,
+      type: "invite", // Keep type or change to 'share'
+      message: `${req.user.name || "Someone"} shared "${note.title}" with you.`,
       meta: { noteId: note._id },
     });
+    
     await sendMail({
       to: userToShare.email,
-      subject: "You have a new note invite",
-      text: `${req.user.name || "Someone"} invited you to "${note.title}".`,
+      subject: "New Note Shared With You",
+      text: `${req.user.name || "Someone"} shared "${note.title}" with you.`,
     });
+
     await logActivity({
       action: "NOTE_SHARED",
       user: req.user._id,
@@ -184,8 +203,9 @@ exports.shareNote = async (req, res) => {
       },
     });
 
-    res.json({ message: "Invite sent successfully" });
+    res.json({ message: "Note shared successfully" });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error sharing note" });
   }
 };

@@ -1,7 +1,21 @@
 const Subscription = require("../models/Subscription");
 
+const Team = require("../models/Team");
+
 exports.getMySubscription = async (req, res) => {
   try {
+    // If user is in a team, check if they "inherit" the plan
+    if (req.user.team) {
+      const team = await Team.findById(req.user.team);
+      if (team && team.owner.toString() !== req.user._id.toString()) {
+        // I am a member, fetch owner's sub
+        const ownerSub = await Subscription.findOne({ user: team.owner });
+        if (ownerSub) {
+           return res.json({ ...ownerSub.toObject(), inherited: true });
+        }
+      }
+    }
+
     let sub = await Subscription.findOne({ user: req.user._id });
     if (!sub) {
       sub = await Subscription.create({ user: req.user._id });

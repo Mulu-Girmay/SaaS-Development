@@ -25,6 +25,11 @@ const NoteSchema = new mongoose.Schema(
       ref:"Folder",
       default:null
     },
+    team: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+      default: null,
+    },
     collaborators:[
       {user:{
       type: mongoose.Schema.Types.ObjectId,

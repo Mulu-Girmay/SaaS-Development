@@ -5,54 +5,43 @@ export default function ViewNote({ note, canWrite, onEdit }) {
   if (!note) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="note-header">
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
         <div>
-          <div className="section-title">Selected Note</div>
-          <h2 className="text-2xl font-semibold">{note.title}</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Last updated {new Date(note.updatedAt).toLocaleString()}
-          </p>
+          <h2 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-2">{note.title}</h2>
+          <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
+            <span>Last updated {new Date(note.updatedAt).toLocaleString()}</span>
+            {canWrite && (
+                 <button onClick={onEdit} className="hover:text-[var(--text-primary)] font-medium">
+                    Edit
+                 </button>
+            )}
+          </div>
         </div>
-        {canWrite && (
-          <button onClick={onEdit} className="btn btn-secondary btn-icon">
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="icon"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-            </svg>
-            Edit
-          </button>
-        )}
       </div>
-      <div className="note-body markdown">
+
+      <div className="markdown-editor prose prose-slate max-w-none text-lg leading-relaxed">
         <div
-          className="text-slate-700"
           dangerouslySetInnerHTML={{
             __html: DOMPurify.sanitize(marked.parse(note.content || "")),
           }}
         />
-        {Array.isArray(note.tags) && note.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {note.tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold"
-              >
-                #{tag}
-              </span>
-            ))}
+      </div>
+
+      {Array.isArray(note.tags) && note.tags.length > 0 && (
+          <div className="mt-8 pt-4 border-t border-[var(--border-color)]">
+            <div className="flex flex-wrap gap-2">
+                {note.tags.map((tag) => (
+                <span
+                    key={tag}
+                    className="px-2 py-1 bg-[var(--bg-active)] text-[var(--text-secondary)] text-xs rounded-md"
+                >
+                    #{tag}
+                </span>
+                ))}
+            </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

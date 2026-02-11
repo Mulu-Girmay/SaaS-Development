@@ -8,38 +8,48 @@ import {
   deleteNote,
   getNoteVersions,
   restoreNoteVersion,
+  updateNote,
+  shareNote
 } from "../api/notes";
-import NotesList from "../components/NotesList";
-import CreateNote from "../components/CreateNote";
-import EditNote from "../components/EditNote";
-import ShareNote from "../components/ShareNote";
-import ViewNote from "../components/ViewNote";
-import { updateNote, shareNote } from "../api/notes";
-import NoteVersions from "../components/NoteVersions";
-import InviteList from "../components/InviteList";
 import { getInvites, acceptInvite, declineInvite } from "../api/invites";
-import ActivityLog from "../components/ActivityLog";
 import { getNotifications, markNotificationsRead } from "../api/notifications";
-import TeamPanel from "../components/TeamPanel";
-import SubscriptionPanel from "../components/SubscriptionPanel";
-import AdminPanel from "../components/AdminPanel";
 import { createTeam, getMyTeam, addTeamMember } from "../api/team";
 import { getMySubscription, updatePlan } from "../api/subscription";
 import { getAnalyticsSummary, getAuditLogs } from "../api/admin";
 
+// New Components
+import Layout from "../components/Layout";
+import Sidebar from "../components/Sidebar";
+import NoteListPanel from "../components/NoteListPanel";
+import RightPanel from "../components/RightPanel";
+
+// Content Components
+import EditNote from "../components/EditNote";
+import ViewNote from "../components/ViewNote";
+import ShareNote from "../components/ShareNote";
+import NoteVersions from "../components/NoteVersions";
+
 export default function Dashboard() {
   const { auth, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const userId = JSON.parse(localStorage.getItem("auth"))?.user?.id;
+  const userId = auth?.user?.id || JSON.parse(localStorage.getItem("auth"))?.user?.id;
+
+  // -- State --
   const [notes, setNotes] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [search, setSearch] = useState("");
-  const [tag, setTag] = useState("");
+  
+  // Navigation State
+  const [activeFolder, setActiveFolder] = useState(""); // "" = All, "favorites" = Favorites, "tagName" = Folder
+  
   const [versions, setVersions] = useState([]);
   const [showVersions, setShowVersions] = useState(false);
   const [error, setError] = useState("");
+  
+  // Right Panel Data
+  const [showRightPanel, setShowRightPanel] = useState(false);
   const [invites, setInvites] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [team, setTeam] = useState(null);
@@ -47,426 +57,355 @@ export default function Dashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
 
+  // -- Loading --
   const loadNotes = async () => {
     try {
       setError("");
-      let res = await getNotes({
-        q: search || undefined,
-        tag: tag || undefined,
-      });
+      // API doesn't support advanced filtering yet, so we filter mainly on client for now 
+      // OR pass 'tag' if it's a folder. For favorites, we handle it client side or specific tag.
+      let params = { q: search || undefined };
+      
+      if (activeFolder === "team") {
+        params.type = "team";
+      } else if (activeFolder && activeFolder !== "favorites") {
+        params.tag = activeFolder;
+      }
+      
+      let res = await getNotes(params);
       setNotes(res.data);
     } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
-      }
-      setError("Failed to load notes. Please try again.");
+      if (err.response?.status === 401) return handleLogout();
+      setError("Failed to load notes.");
     }
   };
-  const loadInvites = async () => {
+
+  const loadAllAuxData = async () => {
     try {
-      const res = await getInvites();
-      setInvites(res.data);
+        const [inv, notif, tm, sub] = await Promise.all([
+            getInvites(),
+            getNotifications(),
+            getMyTeam(),
+            getMySubscription()
+        ]);
+        setInvites(inv.data);
+        setNotifications(notif.data);
+        setTeam(tm.data);
+        setSubscription(sub.data);
+
+        if (auth?.user?.role === "admin") {
+            const [an, aud] = await Promise.all([getAnalyticsSummary(), getAuditLogs()]);
+            setAnalytics(an.data);
+            setAuditLogs(aud.data);
+        }
     } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-      }
+        if (err.response?.status === 401) return handleLogout();
+        console.error("Aux data load error", err);
     }
   };
-  const loadNotifications = async () => {
-    try {
-      const res = await getNotifications();
-      setNotifications(res.data);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-      }
-    }
-  };
-  const loadTeam = async () => {
-    try {
-      const res = await getMyTeam();
-      setTeam(res.data);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-      }
-    }
-  };
-  const loadSubscription = async () => {
-    try {
-      const res = await getMySubscription();
-      setSubscription(res.data);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-      }
-    }
-  };
-  const loadAdminData = async () => {
-    if (auth?.user?.role !== "admin") return;
-    try {
-      const [analyticsRes, auditRes] = await Promise.all([
-        getAnalyticsSummary(),
-        getAuditLogs(),
-      ]);
-      setAnalytics(analyticsRes.data);
-      setAuditLogs(auditRes.data);
-    } catch (err) {
-      // ignore admin fetch errors for non-admins
-    }
-  };
+
   useEffect(() => {
+    if (!userId) {
+         // navigate("/login");
+    }
     loadNotes();
-    loadInvites();
-    loadNotifications();
-    loadTeam();
-    loadSubscription();
-    loadAdminData();
-  }, [search, tag]);
-  const handleCreate = async (data) => {
-    try {
-      await createNote(data);
-      loadNotes();
-    } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
+    loadAllAuxData();
+  }, [search, activeFolder, userId]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  // -- Computed Data --
+  // Derive folders from tags across all notes (fetch all notes first or just rely on current loaded ones)
+  // Ideally, we'd have an API endpoint for /tags, but we can compute it from `notes` if we load all.
+  // For now, let's assume `notes` contains enough data or we fetch unique tags separately. 
+  // We will compute from current `notes` for simplicity, though this only works if "All Notes" is selected.
+  // To fix this proper, we'd need a `getTags` API. We'll stick to client-side derivation from visible notes for now.
+  const folders = Array.from(new Set(notes.flatMap(n => n.tags || []))).sort();
+
+  // Filter notes for display
+  const displayedNotes = notes.filter(note => {
+      if (activeFolder === "team") return true; // Already filtered by API
+      if (activeFolder === "favorites") {
+          return note.tags?.includes("favorite");
       }
-      setError("Failed to create note. Please try again.");
+      // Tag filtering is handled by API reload, but search is client side if API doesn't handle partials well
+      // The API call in loadNotes handles `tag` and `q` params, so `notes` is already filtered.
+      return true;
+  });
+
+  // -- Handlers --
+  const handleCreate = async () => {
+    try {
+      // Create a blank note immediately
+      const isTeam = activeFolder === 'team';
+      const res = await createNote({ 
+          title: isTeam ? "Untitled Team Note" : "Untitled Note", 
+          content: "", 
+          tags: activeFolder && activeFolder !== "favorites" && activeFolder !== "team" ? [activeFolder] : [],
+          isTeamNote: isTeam
+      });
+      
+      // Refresh list
+      await loadNotes();
+      
+      // Select the new note and start editing
+      setActiveNote(res.data);
+      setIsEditing(true); 
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create note.");
     }
   };
+
   const handleSelect = async (id) => {
     try {
       const res = await getNote(id);
       setActiveNote(res.data);
       setIsEditing(false);
       setShowVersions(false);
-      const versionsRes = await getNoteVersions(id);
-      setVersions(versionsRes.data);
+      setShowShare(false);
+      // versions
+      getNoteVersions(id).then(r => setVersions(r.data)).catch(() => {});
     } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
-      }
-      setError("Failed to load note. Please try again.");
+      setError("Failed to load note details.");
     }
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this note?")) return;
     try {
       await deleteNote(id);
-      loadNotes();
-      setActiveNote(null);
+      await loadNotes();
+      if (activeNote?._id === id) setActiveNote(null);
     } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
-      }
-      setError("Failed to delete note. Please try again.");
+      setError("Failed to delete.");
     }
-  };
-
-  const canWrite = (note) => {
-    if (!note || !userId) return false;
-    return (
-      note.user === userId ||
-      note.collaborators?.some(
-        (c) => c.user === userId && c.permission === "write"
-      )
-    );
   };
 
   const handleSave = async (id, data) => {
     try {
       await updateNote(id, data);
-      await loadNotes();
-      setIsEditing(false);
+      await loadNotes(); 
       const res = await getNote(id);
       setActiveNote(res.data);
-      const versionsRes = await getNoteVersions(id);
-      setVersions(versionsRes.data);
+      setIsEditing(false);
     } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
-      }
-      setError("Failed to save note. Please try again.");
+      setError("Failed to save.");
     }
   };
 
-  const handleShare = async (data) => {
-    try {
-      await shareNote(activeNote._id, data);
-      alert("Note shared");
-    } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
+  const toggleFavorite = async (note) => {
+      if (!note) return;
+      const isFav = note.tags?.includes("favorite");
+      let newTags = note.tags || [];
+      
+      if (isFav) {
+          newTags = newTags.filter(t => t !== "favorite");
+      } else {
+          newTags = [...newTags, "favorite"];
       }
-      setError("Failed to share note. Please try again.");
-    }
+      
+      try {
+          // Optimistic update
+          setActiveNote({ ...note, tags: newTags });
+          await updateNote(note._id, { ...note, tags: newTags });
+          await loadNotes();
+      } catch (err) {
+          setError("Failed to update favorite status");
+          // Revert on fail
+          setActiveNote(note); 
+      }
   };
+
+  // -- Aux Handlers --
   const handleRestore = async (versionId) => {
     if (!activeNote?._id) return;
     try {
       await restoreNoteVersion(activeNote._id, versionId);
-      const res = await getNote(activeNote._id);
-      setActiveNote(res.data);
-      const versionsRes = await getNoteVersions(activeNote._id);
-      setVersions(versionsRes.data);
-      setIsEditing(false);
+      handleSelect(activeNote._id);
     } catch (err) {
-      if (err.response?.status === 401) {
-        logout();
-        navigate("/login");
-        return;
-      }
-      setError("Failed to restore version. Please try again.");
+      setError("Failed to restore.");
     }
   };
-  const handleInviteAccept = async (id) => {
-    await acceptInvite(id);
-    await loadInvites();
-    await loadNotes();
+
+  const canWrite = (note) => {
+    if (!note || !userId) return false;
+    const uid = String(userId);
+    // Check owner
+    if (String(note.user) === uid) return true;
+    // Check collaborators
+    return note.collaborators?.some((c) => String(c.user) === uid && c.permission === "write");
   };
-  const handleInviteDecline = async (id) => {
-    await declineInvite(id);
-    await loadInvites();
-  };
-  const handleMarkRead = async () => {
-    await markNotificationsRead();
-    await loadNotifications();
-  };
-  const handleCreateTeam = async (data) => {
-    await createTeam(data);
-    await loadTeam();
-  };
-  const handleAddMember = async (data) => {
-    await addTeamMember(data);
-    await loadTeam();
-  };
-  const handlePlanChange = async (plan) => {
-    await updatePlan(plan);
-    await loadSubscription();
-  };
+
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const folderTags = Array.from(
-    new Set(
-      notes
-        .flatMap((note) => (Array.isArray(note.tags) ? note.tags : []))
-        .filter(Boolean)
-    )
-  );
+
   return (
-    <div className="page app-page">
-      <div className="app-shell">
-        <header className="app-topbar">
-          <div>
-            <div className="section-title">Workspace</div>
-            <h1 className="app-title">Notes Hub</h1>
-            <p className="app-subtitle">
-              Welcome back, {auth?.user?.name}. Capture updates and share
-              progress with your team.
-            </p>
-          </div>
-          <div className="app-topbar-actions">
-            <div className="app-search">
-              <input
-                className="input"
-                placeholder="Search notes, people, tags"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="relative">
-              <button className="btn btn-secondary">Activity</button>
-              {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-xs font-bold rounded-full px-2 py-0.5">
-                  {unreadCount}
-                </span>
-              )}
-            </div>
-            <button className="btn btn-secondary" onClick={logout}>
-              Logout
-            </button>
-          </div>
-        </header>
+    <Layout>
+      <Sidebar 
+        user={auth?.user} 
+        activeFolder={activeFolder} 
+        folders={folders}
+        onSelectFolder={setActiveFolder}
+        onLogout={handleLogout}
+      />
+      
+      <NoteListPanel 
+        notes={displayedNotes}
+        activeNoteId={activeNote?._id}
+        onSelectNote={handleSelect}
+        onCreateNote={handleCreate}
+        searchQuery={search}
+        setSearchQuery={setSearch}
+      />
 
-        <div className="app-body">
-          <aside className="app-sidebar">
-            <div className="panel panel-tight">
-              <div className="section-title">Quick Capture</div>
-              <CreateNote onCreate={handleCreate} />
-            </div>
+      <div className="pane-editor">
+        {/* Editor Top Bar */}
+        {activeNote && (
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                 
+                 {/* Favorite Toggle */}
+                 {canWrite(activeNote) && (
+                    <button 
+                        onClick={() => toggleFavorite(activeNote)}
+                        className={`btn-icon transition-colors ${activeNote.tags?.includes("favorite") ? "text-[var(--p-warning)]" : "text-[var(--text-tertiary)] hover:text-[var(--p-warning)]"}`}
+                        title="Toggle Favorite"
+                    >
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill={activeNote.tags?.includes("favorite") ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                    </button>
+                 )}
 
-            <div className="panel panel-tight">
-              <div className="section-title">Folders</div>
-              <div className="folder-list">
-                <button
-                  className={`folder-item ${tag === "" ? "active" : ""}`}
-                  onClick={() => setTag("")}
-                >
-                  All Notes
-                  <span>{notes.length}</span>
-                </button>
-                {folderTags.map((folder) => (
-                  <button
-                    key={folder}
-                    className={`folder-item ${tag === folder ? "active" : ""}`}
-                    onClick={() => setTag(folder)}
-                  >
-                    {folder}
-                    <span>
-                      {
-                        notes.filter((note) =>
-                          Array.isArray(note.tags)
-                            ? note.tags.includes(folder)
-                            : false
-                        ).length
-                      }
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+                 {/* Delete Button */}
+                 {canWrite(activeNote) && (
+                    <button 
+                        onClick={() => handleDelete(activeNote._id)}
+                        className="btn-icon text-[var(--text-tertiary)] hover:text-[var(--p-danger)]"
+                        title="Delete Note"
+                    >
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                 )}
 
-            <div className="panel panel-tight">
-              <div className="section-title">Notes</div>
-              {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
-              <div className="mb-4">
-                <input
-                  className="input"
-                  placeholder="Filter by tag"
-                  value={tag}
-                  onChange={(e) => setTag(e.target.value)}
-                />
-              </div>
-              <NotesList
-                notes={notes}
-                activeId={activeNote?._id}
-                onSelect={handleSelect}
-                onDelete={handleDelete}
-              />
-            </div>
-          </aside>
+                 {/* Separator */}
+                 <div className="w-px h-6 bg-[var(--border-color)] mx-1"></div>
 
-          <main className="app-main panel">
+                 {/* Share Button (Only Owner/Write) */}
+                 {canWrite(activeNote) && (
+                    <div className="relative">
+                        <button 
+                            onClick={() => setShowShare(!showShare)} 
+                            className="btn-ghost rounded-md text-sm border border-[var(--border-color)] bg-white shadow-sm"
+                        >
+                            Share
+                        </button>
+                        {showShare && (
+                            <div className="absolute right-0 top-10 w-72 bg-white border border-[var(--border-color)] shadow-xl rounded-lg p-4 z-50">
+                                <ShareNote 
+                                    onShare={async (data) => {
+                                        await shareNote(activeNote._id, data);
+                                        setShowShare(false);
+                                        alert("Shared!");
+                                    }}
+                                    onClose={() => setShowShare(false)} 
+                                />
+                            </div>
+                        )}
+                    </div>
+                 )}
+
+                 {/* History Toggle */}
+                 <button 
+                    onClick={() => setShowVersions(!showVersions)}
+                    className="btn-icon text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    title="History"
+                 >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                 </button>
+
+                 {/* Info Toggle */}
+                 <button 
+                    onClick={() => setShowRightPanel(!showRightPanel)}
+                    className={`btn-icon ${unreadCount > 0 ? "text-[var(--p-warning)]" : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"}`}
+                    title="Information"
+                 >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                 </button>
+            </div>
+        )}
+
+        {/* Main Editor Area */}
+        <div className="flex-1 overflow-y-auto">
             {activeNote ? (
-              isEditing ? (
-                <EditNote
-                  note={activeNote}
-                  onSave={handleSave}
-                  onCancel={() => setIsEditing(false)}
-                />
-              ) : (
-                <ViewNote
-                  note={activeNote}
-                  canWrite={canWrite(activeNote)}
-                  onEdit={() => setIsEditing(true)}
-                />
-              )
+                <div className="max-w-3xl mx-auto min-h-full p-12 relative">
+                     {showVersions ? (
+                        <NoteVersions 
+                            versions={versions} 
+                            onRestore={handleRestore} 
+                            onClose={() => setShowVersions(false)}
+                        />
+                     ) : (
+                        isEditing && canWrite(activeNote) ? (
+                            <EditNote 
+                                note={activeNote} 
+                                onSave={handleSave} 
+                                onCancel={() => setIsEditing(false)} 
+                            />
+                        ) : (
+                            <ViewNote 
+                                note={activeNote} 
+                                canWrite={canWrite(activeNote)} 
+                                onEdit={() => setIsEditing(true)} 
+                            />
+                        )
+                     )}
+                </div>
             ) : (
-              <div className="empty-state">
-                Select a note to view or create a new one.
-              </div>
+                <div className="h-full flex flex-col items-center justify-center text-[var(--text-tertiary)]">
+                    <div className="text-4xl mb-4 text-[var(--border-color)]">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <p>Select a note or create a new one.</p>
+                </div>
             )}
+        </div>
 
-            {canWrite(activeNote) && (
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowShare(!showShare)}
-                  className="btn btn-accent btn-icon"
-                >
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    className="icon"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="18" cy="5" r="3" />
-                    <circle cx="6" cy="12" r="3" />
-                    <circle cx="18" cy="19" r="3" />
-                    <path d="M8.6 13.5l6.8 3.9" />
-                    <path d="M15.4 6.6L8.6 10.5" />
-                  </svg>
-                  Share
-                </button>
-                {showShare && <ShareNote onShare={handleShare} />}
-              </div>
-            )}
-
-            {activeNote && (
-              <div className="mt-8">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowVersions(!showVersions)}
-                >
-                  {showVersions ? "Hide History" : "View History"}
-                </button>
-                {showVersions && (
-                  <div className="mt-4">
-                    <NoteVersions
-                      versions={versions}
-                      onRestore={handleRestore}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </main>
-
-          <aside className="app-right">
-            <div className="panel panel-tight">
-              <ActivityLog
+        {/* Floating Right Panel */}
+        {showRightPanel && (
+            <RightPanel 
+                user={auth?.user}
                 notifications={notifications}
                 auditLogs={auditLogs}
-                onMarkRead={handleMarkRead}
-              />
-            </div>
-            <div className="panel panel-tight">
-              <div className="section-title mb-3">Invites</div>
-              <InviteList
                 invites={invites}
-                onAccept={handleInviteAccept}
-                onDecline={handleInviteDecline}
-              />
-            </div>
-            <div className="panel panel-tight">
-              <TeamPanel
                 team={team}
-                onCreateTeam={handleCreateTeam}
-                onAddMember={handleAddMember}
-              />
-            </div>
-            <div className="panel panel-tight">
-              <SubscriptionPanel
                 subscription={subscription}
-                onPlanChange={handlePlanChange}
-              />
-            </div>
-            {auth?.user?.role === "admin" && (
-              <div className="panel panel-tight">
-                <AdminPanel analytics={analytics} auditLogs={auditLogs} />
-              </div>
-            )}
-          </aside>
-        </div>
+                analytics={analytics}
+                onMarkRead={() => { markNotificationsRead().then(loadAllAuxData) }}
+                onAcceptInvite={(id) => acceptInvite(id).then(loadAllAuxData)}
+                onDeclineInvite={(id) => declineInvite(id).then(loadAllAuxData)}
+                onCreateTeam={(d) => createTeam(d).then(loadAllAuxData)}
+                onAddMember={(d) => addTeamMember(d).then(loadAllAuxData)}
+                onPlanChange={(p) => updatePlan(p).then(loadAllAuxData)}
+                onClose={() => setShowRightPanel(false)}
+            />
+        )}
       </div>
-    </div>
+    </Layout>
   );
 }
