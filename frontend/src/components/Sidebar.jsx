@@ -25,6 +25,20 @@ export default function Sidebar({ user, activeFolder, folders, onSelectFolder, o
             Personal
         </div>
         <div className="px-2 space-y-0.5 mb-6">
+             <a
+                href="/tasks"
+                className="w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-3 transition-colors text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+             >
+                <span className="w-4 text-center">✅</span>
+                My Tasks
+             </a>
+             <a
+                href="/graph"
+                className="w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-3 transition-colors text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+             >
+                <span className="w-4 text-center">🕸️</span>
+                Graph View
+             </a>
              {/* All Notes */}
             <button
                 onClick={() => onSelectFolder("")}
@@ -69,6 +83,13 @@ export default function Sidebar({ user, activeFolder, folders, onSelectFolder, o
                         <span className="w-4 text-center">👥</span>
                         Team Notes
                     </button>
+                     <a
+                        href="/whiteboard"
+                        className="w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-3 transition-colors text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                    >
+                        <span className="w-4 text-center">🎨</span>
+                        Whiteboard
+                    </a>
                 </div>
             </>
         )}

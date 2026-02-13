@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
+import Whiteboard from "./pages/Whiteboard";
+import TaskDashboard from "./pages/TaskDashboard";
+import GraphView from "./pages/GraphView";
 import { AuthProvider } from "./context/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -13,11 +16,35 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route
+              <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/whiteboard"
+            element={
+              <ProtectedRoute>
+                <Whiteboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <TaskDashboard />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/graph"
+            element={
+              <ProtectedRoute>
+                <GraphView />
               </ProtectedRoute>
             }
           />

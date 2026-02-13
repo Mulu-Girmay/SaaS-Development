@@ -1,8 +1,53 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import EmbeddedWhiteboard from "./EmbeddedWhiteboard";
 
 export default function ViewNote({ note, canWrite, onEdit }) {
   if (!note) return null;
+
+  // Function to render content with mixed markdown and whiteboards
+  const renderContent = () => {
+      if (!note.content) return null;
+      
+      // Regex to find [Whiteboard: {"document":...}]
+      // Note: JSON inside might be complex, so simple regex might fail on nested brackets if we are not careful.
+      // But we control the format. Let's assume we store it as `[Whiteboard: <base64_or_escaped_json>]`
+      // For MVP, let's use a simpler marker `[Whiteboard:<ID>]` and store data in a separate map?
+      // OR just rely on the fact that we will store encoded string.
+      // Let's assume `[Whiteboard: ...]` where ... is JSON string.
+      
+      // better strategy:
+      // Split by a unique delimiter.
+      
+      const parts = note.content.split(/(\[Whiteboard:.*?\])/s);
+      
+      return parts.map((part, index) => {
+          if (part.startsWith("[Whiteboard:")) {
+              try {
+                  const dataStr = part.substring(12, part.length - 1);
+                  // It might be URL encoded to avoid syntax clashes
+                  const data = decodeURIComponent(dataStr);
+                  return (
+                    <div key={index} className="my-8 border rounded-lg shadow-sm">
+                        <EmbeddedWhiteboard initialData={data} readOnly={true} />
+                    </div>
+                  );
+              } catch (e) {
+                  return <div key={index} className="text-red-500">[Invalid Whiteboard Data]</div>;
+              }
+          } else {
+              // Render Markdown
+               return (
+                <div
+                  key={index}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked.parse(part || "")),
+                  }}
+                />
+              );
+          }
+      });
+  };
 
   return (
     <div className="space-y-6">
@@ -21,11 +66,7 @@ export default function ViewNote({ note, canWrite, onEdit }) {
       </div>
 
       <div className="markdown-editor prose prose-slate max-w-none text-lg leading-relaxed">
-        <div
-          dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(marked.parse(note.content || "")),
-          }}
-        />
+        {renderContent()}
       </div>
 
       {Array.isArray(note.tags) && note.tags.length > 0 && (
